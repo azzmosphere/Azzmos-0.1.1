@@ -1,0 +1,4 @@
+AM_LDFLAGS   = @LIBCURL@ @POSTGRESQL_LDFLAGS@
+AM_CFLAGS = @POSTGRESQL_CFLAGS@
+bin_PROGRAMS = azzmos
+azzmos_SOURCES = azzmos.c azzmos.h 
