@@ -29,9 +29,6 @@ char * _macitoa_( int num );
 extern void _syslog_print_error( unsigned int tid, char *fname, int lineno, char *m1, char *m2, int pri );
 //extern void _syslog_print_error_url( unsigned int tid, char *fname, int lineno, char *m1, char *url, char *m2, int pri );
 inline void  reset_file ( FILE *fh );
-extern bool  is_flag( const long flags, long tflag );
-extern void  unset_flag( long *flags, long tflag);
-extern void  set_flag( long *flags, long tflags );
 
 #define P_SELF (unsigned int) pthread_self()
 #define __L_COMMON P_SELF, __FILE__, __LINE__

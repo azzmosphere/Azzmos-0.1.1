@@ -245,6 +245,103 @@ test_uri_comp_recomp_1(CuTest *tc)
 	CuAssertStrEquals(tc, expect, uri_comp_recomp( &uri ));
 }
 
+test_uri_norm_scheme_1(CuTest *tc)
+{
+	char *seed = strdup("hTTp://www.example.com/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, seed);
+	CuAssertIntEquals(tc, uri_norm_scheme(&uri), 0);
+}
+
+test_uri_norm_scheme_2(CuTest *tc)
+{
+	char *seed = strdup("hTTp://www.example.com/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, seed);
+	uri_norm_scheme(&uri);
+	CuAssertStrEquals(tc, *uri.uri_scheme, "http" );
+}
+
+test_norm_pct_1(CuTest *tc)
+{
+	char *pct = strdup("%00");
+	CuAssertIntEquals(tc,norm_pct(&pct),0);
+}
+
+test_norm_pct_2(CuTest *tc)
+{
+	char *pct = strdup("\%A0");
+	CuAssertIntEquals(tc,norm_pct(&pct),0);
+}
+
+test_norm_pct_3(CuTest *tc)
+{
+	char *pct = strdup("\%a0");
+	CuAssertIntEquals(tc,norm_pct(&pct),0);
+}
+
+test_norm_pct_4(CuTest *tc)
+{
+	char *pct = strdup("\%a0");
+	norm_pct(&pct);
+	CuAssertStrEquals(tc,pct, "\%A0");
+}
+
+test_uri_norm_host_1(CuTest *tc)
+{
+	char *expect = strdup("http://www.example.com/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = 0;
+	err = uri_norm_host(&uri);
+	CuAssertIntEquals(tc,err,0);
+}
+
+test_uri_norm_host_2(CuTest *tc)
+{
+	char *expect = strdup("http://www.example.com/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = 0;
+	*uri.uri_host = strdup("www.example.com");
+	err = uri_norm_host(&uri);
+	CuAssertIntEquals(tc,err,0);
+}
+
+test_uri_norm_host_3(CuTest *tc)
+{
+	char *expect = strdup("http://www.example.com/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = 0;
+	*uri.uri_host = strdup("www.eXamPle.com");
+	err = uri_norm_host(&uri);
+	CuAssertStrEquals(tc,"www.example.com",*uri.uri_host);
+}
+
+test_uri_norm_host_4(CuTest *tc)
+{
+	char *expect = strdup("http://www.example.com/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = 0;
+	*uri.uri_host = strdup("www.eXamPle.com%20%20");
+	err = uri_norm_host(&uri);
+	CuAssertStrEquals(tc,"www.example.com%20%20",*uri.uri_host);
+}
+
+test_uri_norm_host_5(CuTest *tc)
+{
+	char *expect = strdup("http://www.example.com/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = 0;
+	*uri.uri_host = strdup("www.	eXamPle.com%20%20");
+	err = uri_norm_host(&uri);
+	CuAssertIntEquals(tc,EILSEQ,err);
+}
+
+
 CuSuite *
 GetSuite()
 {
@@ -265,6 +362,17 @@ GetSuite()
 	SUITE_ADD_TEST( suite, test_uri_trans_ref6);
 	SUITE_ADD_TEST( suite, test_uri_trans_ref7);
 	SUITE_ADD_TEST( suite, test_uri_comp_recomp_1);
+	SUITE_ADD_TEST( suite, test_uri_norm_scheme_1);
+	SUITE_ADD_TEST( suite, test_uri_norm_scheme_2);
+	SUITE_ADD_TEST( suite, test_norm_pct_1);
+	SUITE_ADD_TEST( suite, test_norm_pct_2);
+	SUITE_ADD_TEST( suite, test_norm_pct_3);
+	SUITE_ADD_TEST( suite, test_norm_pct_4);
+	SUITE_ADD_TEST( suite, test_uri_norm_host_1);
+	SUITE_ADD_TEST( suite, test_uri_norm_host_2);
+	SUITE_ADD_TEST( suite, test_uri_norm_host_3);
+	SUITE_ADD_TEST( suite, test_uri_norm_host_4);
+	SUITE_ADD_TEST( suite, test_uri_norm_host_5);
 }
 
 int 

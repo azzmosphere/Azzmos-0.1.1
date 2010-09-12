@@ -89,6 +89,10 @@
 #include <time.h>
 #endif
 
+#ifndef _CTYPE_H_
+#include <ctype.h>
+#endif
+
 /* #####   EXPORTED MACROS   ######################################################## */
 
 /* #####   EXPORTED TYPE DEFINITIONS   ############################################## */

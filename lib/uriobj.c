@@ -24,6 +24,25 @@
 /* #####   MACROS  -  LOCAL TO THIS SOURCE FILE   ################################### */
 #define RE_ID 0
 #define RE    "^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?"
+
+/************************************************************************************** 
+ * All though %7E and ~ are equivalants for the purpose of URI uniquness tilda's are 
+ * also transposed to the '~' character.  This is done after percentage encoding 
+ * checking is performed.
+ **************************************************************************************/
+#define RE_TILDA_ID 1
+//#define RE_REPLACE_TILDA "(%7E)"
+
+/**************************************************************************************
+ * The path section is aloud to have reserved charcters embedded as percentage encoded
+ * digits.  These have to be checked to see if they are not a dangerous character.
+ **************************************************************************************/
+#define RE_PC_ID 2
+//#define RE_PERCENT_ENC   "(%??)"
+
+/**************************************************************************************
+ * The following functions are stop the program from breaking by trying to malloc NULL
+ **************************************************************************************/
 #define URI_CP_PT(p) (*p)?strdup(*p):NULL
 #define UI(u) ((*u)?*u:"")
 
@@ -61,6 +80,13 @@ static char *get_next_segment( char **path);
 static char *replace_prefix( char **path);
 static void  init_uriobj_str( uriobj_t *uri);
 inline static char *uri_strcpy( char **s1, const char *s2);
+inline static char *uri_strcat( char *s1, const char *format, const char *s2);
+static bool is_gen_delims( char c);
+static bool is_sub_delim( char c );
+static bool is_reserved( char c );
+static bool is_unreserved( char c );
+static bool is_pct_encoded( char *s );
+static bool is_scheme_char( char c );
 
 /* #####   FUNCTION DEFINITIONS  -  EXPORTED FUNCTIONS   ############################ */
 
@@ -239,6 +265,10 @@ uri_parse( uriobj_t *uri, regexpr_t *re, const char *fqp)
 		*(uri->uri_path)   = usplice(fqp, re->re_ovector[RE_P_S], re->re_ovector[RE_P_E] -1);
 		*(uri->uri_query)  = usplice(fqp, re->re_ovector[RE_Q_S], re->re_ovector[RE_Q_E] -1);
 		*(uri->uri_frag)   = usplice(fqp, re->re_ovector[RE_F_S], re->re_ovector[RE_F_E] -1);
+		uri->uri_id = uri->uri_flags = 0;
+		*(uri->uri_host) = *(uri->uri_port)
+			         = *(uri->uri_ip)
+			         = NULL;
 	}
 	return err;
 }
@@ -309,16 +339,143 @@ uri_comp_recomp( uriobj_t *uri)
 		asprintf(&result, "%s:",*uri->uri_scheme);
 	}
 	if( *uri->uri_auth){
-		asprintf(&result, "%s//%s", result, *uri->uri_auth);
+		result = uri_strcat(result,"%s//%s", *uri->uri_auth);
 	}
-	asprintf(&result, "%s%s",result, *uri->uri_path);
+	result = uri_strcat(result,"%s%s",*uri->uri_path);
 	if( *uri->uri_query ){
-		asprintf(&result, "%s?%s", result, *uri->uri_query);
+		result = uri_strcat(result,"%s?%s",*uri->uri_query);
 	}
 	if( *uri->uri_frag ) {
-		asprintf(&result, "%s#%s", result, *uri->uri_frag);
+		result = uri_strcat(result,"%s#%s",*uri->uri_frag);
 	}
 	return result;
+}
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  uri_norm_scheme
+ *  Description:  Normalize the scheme section of the uri. Return 0 on success or 
+ *                EILSEQ or ENOATTR 
+ * =====================================================================================
+ */
+extern int
+uri_norm_scheme( uriobj_t *uri) 
+{
+	int rv = 0,
+	    len,
+	    i;
+	char *scheme;
+	if( ! *uri->uri_scheme || !strlen(*uri->uri_scheme)) {
+		rv = ENOATTR;
+	}
+	else if( ! isalpha(*uri->uri_scheme[0])){
+		rv = EILSEQ;
+	}
+	else {
+		scheme = strdup( *uri->uri_scheme);
+		len    = strlen(scheme);
+		for(i = 0; i < len;i ++) {
+			if( ! is_scheme_char(scheme[i])){
+				rv = EILSEQ;
+				break;
+			}
+			if( isalpha(scheme[i]) && isupper(scheme[i])){
+				scheme[i] = tolower(scheme[i]);
+			}
+		}
+	}
+	if( rv == 0 ){
+		*(uri->uri_scheme) = NULL;
+		free(*uri->uri_scheme);
+		*(uri->uri_scheme) = scheme;
+	}
+	return rv;
+}
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  norm_pct
+ *  Description:  Normailize a pct-encoded character in accordance to section 2.1 of RFC
+ *                3986. 
+ * =====================================================================================
+ */
+extern int
+norm_pct( char **pct)
+{
+	char *p = strdup(*pct);
+	int err = 0;
+ 	if(!is_pct_encoded(p)){
+		err = EILSEQ;
+	}
+	if( err == 0 ) {
+		if( isalpha(p[1]) && islower(p[1])){
+			p[1] = toupper(p[1]);
+		}
+		if( isalpha(p[2]) && islower(p[2])){
+			p[2] = toupper(p[2]);
+		}
+	}
+	*(pct) = NULL;
+	free(*pct);
+	*(pct) = strdup(p);
+	return err;
+}
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  uri_norm_host
+ *  Description:  Normalize the host section of the URI if it is set.  The host section
+ *                that is normalized here is the reg-name, and not the IP address.
+ *                The IP address should be inside the IP section of the structure.
+ *
+ *                This section attempts to implement section 3.2.2 of RFC3986 with the
+ *                exception that userinfo is not checked as HTTP and HTTPS do not 
+ *                specify the usage of it.
+ * =====================================================================================
+ */
+extern int
+uri_norm_host( uriobj_t *uri)
+{
+	int   err  = 0, i, len;
+	char *pct  = (char *) malloc(4),
+	     *host = URI_CP_PT(uri->uri_host);
+	if( host ) {
+		len = strlen(host);
+		for(i = 0;i < len; i ++ ) {
+			if( host[i] == '%'){
+				if( (i + 2) > len ) {
+					err = EILSEQ;
+					break;
+				}
+				pct[0] = host[i ++];
+				pct[1] = host[i ++];
+				pct[2] = host[i ++];
+				pct[3] = '\0';
+				err = norm_pct(&pct);
+				if( err ) {
+					break;
+				}
+				host[(i - 3)] = pct[0];
+				host[(i - 2)] = pct[1];
+				host[(i - 1)] = pct[2];
+				continue;
+			}
+			if(!(is_sub_delim(host[i]) || is_unreserved(host[i]))){
+				err = EILSEQ;
+				break;	
+			}
+			if( isalpha(host[i]) && isupper(host[i]) ){
+				host[i] = tolower(host[i]);
+			}
+		}
+		if( ! err ) {
+			*(uri->uri_host) = NULL;
+			free(*uri->uri_host);
+			*(uri->uri_host) = host;
+		}
+	}
+	return err;
 }
 
 /* #####   FUNCTION DEFINITIONS  -  LOCAL TO THIS SOURCE FILE   ##################### */
@@ -472,8 +629,18 @@ init_uriobj_str( uriobj_t *uri)
 	uri->uri_path   = (char **) malloc(sizeof(char *));
 	uri->uri_query  = (char **) malloc(sizeof(char *));
 	uri->uri_frag   = (char **) malloc(sizeof(char *));
+	uri->uri_host   = (char **) malloc(sizeof(char *));
+	uri->uri_port   = (char **) malloc(sizeof(char *));
+	uri->uri_ip     = (char **) malloc(sizeof(char *));
 }
 
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  uri_strcpy
+ *  Description:  Copy s2 to s1.
+ * =====================================================================================
+ */
 inline static char *
 uri_strcpy( char **s1, const char *s2)
 {
@@ -482,6 +649,216 @@ uri_strcpy( char **s1, const char *s2)
 		return NULL;
 	}
 	asprintf(s1, "%s", s2);
+	return *s1;
+}
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  uri_strcat
+ *  Description:  Concadinate s2 to s1 using a format string.  The format string should
+ *                contain two '%s'.  This is a wrapper function to stop memory leaks.
+ * =====================================================================================
+ */
+inline static char *
+uri_strcat( char *s1, const char *format, const char *s2)
+{
+	char *buf;
+	asprintf(&buf,format,s1,s2);
+	s1 = NULL;
+	free(s1);
+	s1 = buf;
 	return s1;
 }
 
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  is_gen_delim
+ *  Description:  Tests a char to see if it a gen-delim character, returns true for
+ *                success or false on failure.
+ * =====================================================================================
+ */
+static bool
+is_gen_delims( char c)
+{
+	bool rv = false;
+	switch( c ) {
+		case(':'):
+			rv = true;
+			break;
+		case('/'):
+			rv = true;
+			break;
+		case('?'):
+			rv = true;
+			break;
+		case('#'):
+			rv = true;
+			break;
+		case('['):
+			rv = true;
+			break;
+		case(']'):
+			rv = true;
+			break;
+		case('@'):
+			rv = true;
+	}
+	return rv;
+}
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  is_sub_delim
+ *  Description:  Checks to see if a character is a sub-delim character.
+ * =====================================================================================
+ */
+static bool
+is_sub_delim( char c )
+{
+	bool rv = false;
+	switch( c ){
+		case('!'):
+			rv = true;
+			break;
+		case('$'):
+			rv = true;
+			break;
+		case('&'):
+			rv = true;
+			break;
+		case('\''):
+			rv = true;
+			break;
+		case('('):
+			rv = true;
+			break;
+		case(')'):
+			rv = true;
+			break;
+		case('*'):
+			rv = true;
+			break;
+		case('+'):
+			rv = true;
+			break;
+		case(','):
+			rv = true;
+			break;
+		case(';'):
+			rv = true;
+			break;
+		case('='):
+			rv = true;
+	}
+	return rv;
+}
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  is_reserved
+ *  Description:  Reserved characters can only be used in certain parts of the URI
+ *                string.
+ * =====================================================================================
+ */
+static bool
+is_reserved( char c )
+{
+	bool rv = false;
+	if( is_gen_delim(c) || is_sub_delim(c) ) {
+		rv = true;
+	}
+	return rv;
+}
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  is_unreserved
+ *  Description:  A unreserved character can appear in any part of the URI 
+ * =====================================================================================
+ */
+static bool
+is_unreserved( char c )
+{
+	bool rv = false;
+	if( isalpha(c) ){
+		rv = true;
+	}
+	else if( isdigit(c)){
+		rv = true;
+	}
+	else {
+		switch(c){
+			case('-'):
+				rv = true;
+				break;
+			case('.'):
+				rv = true;
+				break;
+			case('_'):
+				rv = true;
+				break;
+			case('~'):
+				rv = true;
+		}
+	}
+	return rv;
+}
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  is_pct_encoded
+ *  Description:  Checks to see if a string is percentage encoded.
+ * =====================================================================================
+ */
+static bool
+is_pct_encoded( char *s ) {
+	if( ! s ) {
+		return false;
+	}
+	int len = strlen(s);
+	bool rv = true;
+	if( len != 3){
+		return false;
+	}
+	if( s[0] != '%' || !isxdigit(s[1]) || !isxdigit(s[2])){
+		rv = false;
+	}
+	return rv;
+}
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  is_scheme_char
+ *  Description:  Check is the character forms a valid URI scheme character.
+ * =====================================================================================
+ */
+static bool 
+is_scheme_char( char c )
+{
+	bool rv = false;
+	if( isalpha(c) ) {
+		rv = true;
+	}
+	else if( isdigit(c)){
+		rv = true;
+	}
+	else {
+		switch(c){
+			case '+':
+				rv = true;
+				break;
+			case '-':
+				rv = true;
+				break;
+			case '.':
+				rv = true;
+		}
+	}
+	return rv;
+}
