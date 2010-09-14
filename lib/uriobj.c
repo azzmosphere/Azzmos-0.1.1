@@ -25,20 +25,13 @@
 #define RE_ID 0
 #define RE    "^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?"
 
+/* :TODO:12/09/2010 17:49:55::  */
 /************************************************************************************** 
  * All though %7E and ~ are equivalants for the purpose of URI uniquness tilda's are 
  * also transposed to the '~' character.  This is done after percentage encoding 
  * checking is performed.
  **************************************************************************************/
 #define RE_TILDA_ID 1
-//#define RE_REPLACE_TILDA "(%7E)"
-
-/**************************************************************************************
- * The path section is aloud to have reserved charcters embedded as percentage encoded
- * digits.  These have to be checked to see if they are not a dangerous character.
- **************************************************************************************/
-#define RE_PC_ID 2
-//#define RE_PERCENT_ENC   "(%??)"
 
 /**************************************************************************************
  * The following functions are stop the program from breaking by trying to malloc NULL
@@ -87,6 +80,7 @@ static bool is_reserved( char c );
 static bool is_unreserved( char c );
 static bool is_pct_encoded( char *s );
 static bool is_scheme_char( char c );
+static bool is_pchar( char c);
 
 /* #####   FUNCTION DEFINITIONS  -  EXPORTED FUNCTIONS   ############################ */
 
@@ -478,6 +472,394 @@ uri_norm_host( uriobj_t *uri)
 	return err;
 }
 
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  uri_norm_port
+ *  Description:  Normalize the port section.  Just check to see if it a number. This 
+ *                should only be set if it is different from the scheme, for example http 
+ *                on 8080
+ * =====================================================================================
+ */
+extern int
+uri_norm_port( uriobj_t *uri)
+{
+	char *port = URI_CP_PT(uri->uri_port);
+	int err = 0,i, len;
+	if( port ) {
+		len = strlen(port);
+		for(i = 0; i < len; i ++){
+			if( ! isnumber(port[i])){
+				err = EILSEQ;
+			}
+		}
+	}
+	return err;
+}
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  uri_norm_path
+ *  Description:  Normalize the path,  with this section just check for illegal 
+ *                characters.  upper and lower case letters are aloud.
+ * =====================================================================================
+ */
+extern int 
+uri_norm_path( uriobj_t *uri)
+{
+	int err = 0,
+	    len = 0,
+	    i   = 0,
+	    n   = 0;
+	char *path = URI_CP_PT(uri->uri_path),
+	     *ou,
+	     *pct;
+	if( !path){
+		return EINVAL;
+	}
+	len = strlen(path);
+	ou  = (char *) malloc(len + 1);
+	pct = (char *) malloc(4);
+	if( errno ){
+		return errno;
+	}
+	for(;i < len; i ++){
+		if( is_pchar(path[i]) || path[i] == '/'){
+			ou[n ++] = path[i];
+		}
+		else if(path[i] == '%'){
+			if( (i + 2) > len){
+				err = EILSEQ;
+				break;
+			}
+			pct[0] = path[i ++];
+			pct[1] = path[i ++];
+			pct[2] = path[i ++];
+			pct[3] = '\0';
+			err = norm_pct(&pct);
+			if( err ){
+				break;
+			}
+			ou[n ++] = pct[0];
+			ou[n ++] = pct[1];
+			ou[n ++] = pct[2];
+		}
+		else {
+			err = EILSEQ;
+			break;
+		}
+	}
+	ou[n] = '\0';
+	free(*uri->uri_path);
+	*uri->uri_path = strdup(ou);
+	return err;	
+}
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  uri_norm_ipv4
+ *  Description:  Normalise the uri_ip section if it is IPv4.  This should only be done
+ *                if the uri_flags does not have URI_IPV6 and URI_IP is set. 
+ *                Normalisation for this is (attempted) to be compliant with section 
+ *                3.2.2 of RFC 3986.
+ *
+ *                if a error is returned by this function then the flag URI_IPINVALID 
+ *                should be set.
+ *
+ *                In this function arguing NULL is considered a EINVAL as it assumes 
+ *                the above rules.
+ *
+ *                IPv4 addresses will be determined by RFC1123 section 2.1, EI
+ *                #.#.#.#
+ *                  dec-octet   = DIGIT                 ; 0-9
+ *                              / %x31-39 DIGIT         ; 10-99
+ *                              / "1" 2DIGIT            ; 100-199
+ *                              / "2" %x30-34 DIGIT     ; 200-249
+ *                              / "25" %x30-35          ; 250-255
+ *                
+ * =====================================================================================
+ */
+extern int
+uri_norm_ipv4( uriobj_t *uri)
+{
+	int err = 0, 
+	    len, 
+	    i,
+	    offset = 0,
+	    val,
+	    segcount = 0;
+	char *ip = URI_CP_PT(uri->uri_ip),
+	     *segment = (char *) malloc(4);
+	if( ! ip ) {
+		err = EINVAL;
+	}
+	else {
+		len = strlen(ip);
+		for(i = 0;i < len; i ++){
+			if( ip[i] == '.'){
+				segment[offset] = '\0';
+				offset = 0;
+				segcount ++;
+				if( ! strlen(segment) ){
+					err = EILSEQ;
+					break;
+				}
+				if( segcount > 4){
+					err = ERANGE;
+					break;
+				}
+				val = atoi(segment);
+				switch(strlen(segment)){
+					case(1):
+						break;
+					case(2):
+						if(val < 10){
+							err = EILSEQ;
+						}
+						break;
+					case(3):
+						if(val < 100 || val > 255){
+							err = EILSEQ;
+						}
+						break;
+
+					 /* NOT REACHED */
+					default:
+						err = EILSEQ;
+				}
+				if( err ) {
+					break;
+				}
+				segment = strcpy(segment,"");
+				continue;
+			}
+			else {
+				if( offset > 3){
+					err = ERANGE;
+					break;
+				}
+				if( !isnumber(ip[i])){
+					err = EILSEQ;
+					break;
+				}
+				segment[offset] = ip[i];
+				offset ++;
+			}
+		}
+	}
+	return err;
+}
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  uri_norm_auth
+ *  Description:  some safe assumptions are aloud here.
+ *                1. Because there is only support for http and https no userinfo is 
+ *                   required and can be safely ignored.  This is because 404 error
+ *                   will produce a request for creditials and thus RFC2616 makes no 
+ *                   metion of userinfo. 
+ *                2. if the first character of string is not a number or a '[' then we 
+ *                   can assume that it is a regname because RFC1035 states that a 
+ *                   reg-name must start with a alpha character.
+ * =====================================================================================
+ */
+extern int        
+uri_norm_auth( uriobj_t *uri)
+{
+	int err = 0,
+	    n   = 0,
+	    i   = 0,
+	    len = 0;
+	char *auth = URI_CP_PT(uri->uri_auth),
+	     *port = NULL,
+	     *host ,
+	     *buffer,
+	     *pct = (char *)malloc(4);
+	uri->uri_flags &= ~URI_REGNAME;
+	if( !auth ){
+		uri->uri_flags |= URI_INVALID;
+		return EINVAL;
+	}
+	if( isalpha(auth[0])){
+		uri->uri_flags |= URI_REGNAME;
+	}
+	else if(auth[0] == '['){
+		uri->uri_flags |= URI_IPV6;
+		uri->uri_flags |= URI_IP;
+		uri->uri_flags &= ~URI_IPINVALID;
+		i++;
+	}
+	else if(isnumber(auth[0])){
+		uri->uri_flags |= URI_IP;
+	}
+	else {
+		uri->uri_flags |= URI_INVALID;
+		return EILSEQ;
+	}
+	len = strlen(auth);
+	host = (char *) malloc(len + 1);
+	if( errno ){
+		return errno;
+	}
+	buffer = host;
+	for(;i < len;i++){
+		/*
+		 * IPV6 end, set it as valid. RFC2732 madates
+		 * that it is to be rejected otherwise.  
+		 */
+		if( auth[i] == ']' && uri->uri_flags & URI_IPV6){
+			uri->uri_flags &= ~URI_IPINVALID;
+			continue;
+		}
+		if( auth[i] == ':'){
+			port = (char *)malloc((len - i) + 1);
+			buffer = port;
+			n = 0;
+			continue;
+		}
+		buffer[n] = auth[i];
+		n ++;
+	}
+	if( uri->uri_flags & URI_REGNAME){
+		*(uri->uri_host) = NULL;
+		free(*uri->uri_host);
+		*(uri->uri_host) = strdup(host);
+	}
+	else if( uri->uri_flags & URI_IP){
+		*(uri->uri_ip) = NULL;
+		free(*uri->uri_ip);
+		*(uri->uri_ip) = strdup(host);
+	}
+	if( port ){
+		*(uri->uri_port) = NULL;
+		free(*uri->uri_port);	
+		*(uri->uri_port) = strdup(port);
+	}
+	return err;
+}
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  uri_norm_ip
+ *  Description:  Determine the address is IPv4 or IPv6 and normalize accordingly.
+ * =====================================================================================
+ */
+extern int 
+uri_norm_ip( uriobj_t *uri)
+{
+	int err = 0;
+	if( uri->uri_flags & URI_IPV6){
+		err = uri_norm_ipv6(uri);
+	}
+	else {
+		err = uri_norm_ipv4(uri);
+	}
+	return err;
+}
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  uri_norm_ipv6
+ *  Description:  Currently this function returns ENOSYS,  as of yet IPv6 support is not
+ *                implemented in the downloader.  This should cause the URI_INVALID to 
+ *                be set.
+ * =====================================================================================
+ */
+ /* REMAINS TO BE IMPLEMENTED */
+extern int
+uri_norm_ipv6( uriobj_t *uri)
+{
+	return ENOSYS;
+}
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  uri_auth_sync
+ *  Description:  Syncronize the sections that make up the authority. This should be 
+ *                done after all normalization.
+ * =====================================================================================
+ */
+extern int        
+uri_auth_sync( uriobj_t *uri)
+{
+	char *auth,
+	     *host;
+	int len = 0,
+	    err = 0;
+	if(uri->uri_flags & URI_IP){
+		len  = strlen(*uri->uri_ip);
+		host = strdup(*uri->uri_ip);
+	}
+	else if( uri->uri_flags & URI_REGNAME){
+		len  = strlen(*uri->uri_host);
+		host = strdup(*uri->uri_host);
+	}
+	else {
+		err = EINVAL;
+	}
+	if( ! err ) {
+		if( uri->uri_flags & URI_IPV6){
+			if( *uri->uri_port){
+				asprintf(&auth,"[%s]:%s",host, *uri->uri_port);
+			}
+			else {
+				asprintf(&auth,"[%s]",host);
+			}
+		}
+		else {
+			if(*uri->uri_port){
+				asprintf(&auth, "%s:%s",host, *uri->uri_port);
+			}
+			else {
+				asprintf(&auth, "%s",host);
+			}
+		}
+		if( ! err ) {
+			*(uri->uri_auth) = NULL;
+			free(*uri->uri_auth);
+			*(uri->uri_auth) = strdup(auth);
+		}
+	}
+	return err;
+}
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  uri_normalize
+ *  Description:  Normalize all section of the URI.
+ * =====================================================================================
+ */
+extern int        
+uri_normalize( uriobj_t *uri)
+{
+	int err = uri_norm_scheme(uri);
+	if( ! err ) {
+		err = uri_norm_auth(uri);
+	}
+	if( ! err ) {
+		if( uri->uri_flags & URI_REGNAME) {
+			err = uri_norm_host(uri);
+		}
+	}
+	if( ! err && *(uri->uri_port)){
+		err = uri_norm_port(uri);
+	}
+	if( ! err && uri->uri_flags & URI_IP){
+		err = uri_norm_ip(uri);
+	}
+	if( ! err ){
+		err = uri_auth_sync(uri);
+	}
+	if( ! err ){
+		err = uri_norm_path(uri);
+	}
+	return err;
+}
+
 /* #####   FUNCTION DEFINITIONS  -  LOCAL TO THIS SOURCE FILE   ##################### */
 /* 
  * ===  FUNCTION  ======================================================================
@@ -861,4 +1243,26 @@ is_scheme_char( char c )
 		}
 	}
 	return rv;
+}
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  is_pchar
+ *  Description:  Test if a character is a pchar as desribed by RFC3986.  A pchar
+ *                is: unreserved / pct-encoded / sub-delims / ":" / "@", if character
+ *                is a pchar return true otherwise return false.
+ * =====================================================================================
+ */
+static bool
+is_pchar( char c)
+{
+	bool result  = false;
+	if( is_unreserved(c) || is_sub_delim(c) ){
+		result = true;
+	}
+	else if( c == ':' || c == '@'){
+		result = true;
+	}
+	return result;
 }

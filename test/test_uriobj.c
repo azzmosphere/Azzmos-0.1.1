@@ -341,6 +341,111 @@ test_uri_norm_host_5(CuTest *tc)
 	CuAssertIntEquals(tc,EILSEQ,err);
 }
 
+test_uri_norm_ipv4_1(CuTest *tc)
+{
+	char *expect = strdup("http://www.example.com/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = 0;
+	err = uri_norm_ipv4(&uri);
+	CuAssertIntEquals(tc,EINVAL,err);
+}
+
+test_uri_norm_ipv4_2(CuTest *tc)
+{
+	char *expect = strdup("http://www.example.com/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = 0;
+	*(uri.uri_ip) = strdup("192.168.1.1");
+	err = uri_norm_ipv4(&uri);
+	CuAssertIntEquals(tc,0,err);
+}
+
+test_uri_norm_ipv4_3(CuTest *tc)
+{
+	char *expect = strdup("http://www.example.com/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = 0;
+	*(uri.uri_ip) = strdup("192.168.01.1");
+	err = uri_norm_ipv4(&uri);
+	CuAssertIntEquals(tc,EILSEQ,err);
+}
+
+test_uri_norm_ipv4_4(CuTest *tc)
+{
+	char *expect = strdup("http://www.example.com/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = 0;
+	*(uri.uri_ip) = strdup("192.368.1.1");
+	err = uri_norm_ipv4(&uri);
+	CuAssertIntEquals(tc,EILSEQ,err);
+}
+
+test_uri_norm_auth_1(CuTest *tc)
+{
+	char *expect = strdup("http://www.example.com/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = uri_norm_auth(&uri);
+	CuAssertIntEquals(tc,0,err);
+}
+
+test_uri_norm_auth_2(CuTest *tc)
+{
+	char *expect = strdup("http://www.example.com/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = uri_norm_auth(&uri);
+	CuAssertStrEquals(tc,*uri.uri_host,"www.example.com");
+}
+
+test_uri_norm_auth_3(CuTest *tc)
+{
+	char *expect = strdup("http://www.example.com:8080/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = uri_norm_auth(&uri);
+	CuAssertStrEquals(tc,*uri.uri_host,"www.example.com");
+}
+
+test_uri_norm_auth_4(CuTest *tc)
+{
+	char *expect = strdup("http://www.example.com:8080/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = uri_norm_auth(&uri);
+	CuAssertStrEquals(tc,*uri.uri_port,"8080");
+}
+
+test_uri_norm_auth_5(CuTest *tc)
+{
+	char *expect = strdup("http://192.168.1.100:8080/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = uri_norm_auth(&uri);
+	CuAssertStrEquals(tc,*uri.uri_ip,"192.168.1.100");
+}
+
+test_uri_normalize_1(CuTest *tc)
+{
+	char *expect = strdup("http://192.168.1.100:8080/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = uri_normalize(&uri);
+	CuAssertStrEquals(tc,*uri.uri_ip,"192.168.1.100");
+}
+
+test_uri_normalize_2(CuTest *tc)
+{
+	char *expect = strdup("http://www.example.com/test/func.cgi?x=y&z=j");
+	uriobj_t uri;
+	uri_parse(&uri, re, expect);
+	int err = uri_normalize(&uri);
+	CuAssertStrEquals(tc,*uri.uri_host,"www.example.com");
+}
 
 CuSuite *
 GetSuite()
@@ -373,6 +478,17 @@ GetSuite()
 	SUITE_ADD_TEST( suite, test_uri_norm_host_3);
 	SUITE_ADD_TEST( suite, test_uri_norm_host_4);
 	SUITE_ADD_TEST( suite, test_uri_norm_host_5);
+	SUITE_ADD_TEST( suite, test_uri_norm_ipv4_1);
+	SUITE_ADD_TEST( suite, test_uri_norm_ipv4_2);
+	SUITE_ADD_TEST( suite, test_uri_norm_ipv4_3);
+	SUITE_ADD_TEST( suite, test_uri_norm_ipv4_4);
+	SUITE_ADD_TEST( suite, test_uri_norm_auth_1);
+	SUITE_ADD_TEST( suite, test_uri_norm_auth_2);
+	SUITE_ADD_TEST( suite, test_uri_norm_auth_3);
+	SUITE_ADD_TEST( suite, test_uri_norm_auth_4);
+	SUITE_ADD_TEST( suite, test_uri_norm_auth_5);
+	SUITE_ADD_TEST( suite, test_uri_normalize_1);
+	SUITE_ADD_TEST( suite, test_uri_normalize_2);
 }
 
 int 
