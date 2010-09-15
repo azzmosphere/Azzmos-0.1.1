@@ -46,7 +46,7 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 am__objects_1 = CuTest.$(OBJEXT) uriobj.$(OBJEXT) utils.$(OBJEXT) \
-	regexpr.$(OBJEXT)
+	regexpr.$(OBJEXT) urinorm.$(OBJEXT)
 am_test_regexpr_OBJECTS = test_regexpr.$(OBJEXT) $(am__objects_1)
 test_regexpr_OBJECTS = $(am_test_regexpr_OBJECTS)
 test_regexpr_LDADD = $(LDADD)
@@ -186,10 +186,11 @@ top_srcdir = @top_srcdir@
 SOURCES = CuTest.c CuTest.h \
 	  $(top_srcdir)/lib/uriobj.c \
 	  $(top_srcdir)/lib/utils.c \
-	  $(top_srcdir)/lib/regexpr.c
+	  $(top_srcdir)/lib/regexpr.c \
+	  $(top_srcdir)/src/urinorm.c 
 
-INCLUDES = @POSTGRESQL_CFLAGS@ -I$(top_srcdir)/include
-AM_CFLAGS = -I$(top_srcdir)/bin
+INCLUDES = @POSTGRESQL_CFLAGS@ -I$(top_srcdir)/include 
+AM_CFLAGS = -I$(top_srcdir)/src
 AM_LDFLAGS = @POSTGRESQL_LDFLAGS@ @LIBCURL@
 test_uriobj_SOURCES = test_uriobj.c $(SOURCES) 
 test_regexpr_SOURCES = test_regexpr.c $(SOURCES)
@@ -250,6 +251,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/regexpr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_regexpr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_uriobj.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/urinorm.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/uriobj.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/utils.Po@am__quote@
 
@@ -315,6 +317,20 @@ regexpr.obj: $(top_srcdir)/lib/regexpr.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$(top_srcdir)/lib/regexpr.c' object='regexpr.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o regexpr.obj `if test -f '$(top_srcdir)/lib/regexpr.c'; then $(CYGPATH_W) '$(top_srcdir)/lib/regexpr.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/lib/regexpr.c'; fi`
+
+urinorm.o: $(top_srcdir)/src/urinorm.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT urinorm.o -MD -MP -MF $(DEPDIR)/urinorm.Tpo -c -o urinorm.o `test -f '$(top_srcdir)/src/urinorm.c' || echo '$(srcdir)/'`$(top_srcdir)/src/urinorm.c
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/urinorm.Tpo $(DEPDIR)/urinorm.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$(top_srcdir)/src/urinorm.c' object='urinorm.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o urinorm.o `test -f '$(top_srcdir)/src/urinorm.c' || echo '$(srcdir)/'`$(top_srcdir)/src/urinorm.c
+
+urinorm.obj: $(top_srcdir)/src/urinorm.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT urinorm.obj -MD -MP -MF $(DEPDIR)/urinorm.Tpo -c -o urinorm.obj `if test -f '$(top_srcdir)/src/urinorm.c'; then $(CYGPATH_W) '$(top_srcdir)/src/urinorm.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/urinorm.c'; fi`
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/urinorm.Tpo $(DEPDIR)/urinorm.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$(top_srcdir)/src/urinorm.c' object='urinorm.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o urinorm.obj `if test -f '$(top_srcdir)/src/urinorm.c'; then $(CYGPATH_W) '$(top_srcdir)/src/urinorm.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/urinorm.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

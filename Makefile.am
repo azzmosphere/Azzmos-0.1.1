@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = bin test lib include 
+SUBDIRS = include lib src test
 
 EXTRA_DIST = autogen.sh TODO 
 

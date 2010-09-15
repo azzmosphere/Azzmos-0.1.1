@@ -2,7 +2,7 @@ AC_INIT( [azzmos], [0.1.1], [azzmosphere@gmail.com])
 AM_CONFIG_HEADER(config.h)
 
 dnl Package information
-AC_CONFIG_SRCDIR(bin/azzmos.c)
+AC_CONFIG_SRCDIR(src/azzmos.c)
 AM_INIT_AUTOMAKE
 
 dnl program checks
@@ -14,10 +14,10 @@ AC_PROG_LIBTOOL
 
 AC_CONFIG_FILES([
   Makefile
-  bin/Makefile
-  test/Makefile
   include/Makefile
   lib/Makefile
+  src/Makefile
+  test/Makefile
 ])
 
 

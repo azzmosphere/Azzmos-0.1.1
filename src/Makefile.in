@@ -33,7 +33,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 bin_PROGRAMS = azzmos$(EXEEXT)
-subdir = bin
+subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/m4_ax_lib_curl.m4 \
@@ -48,7 +48,7 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am_azzmos_OBJECTS = azzmos.$(OBJEXT)
+am_azzmos_OBJECTS = azzmos.$(OBJEXT) urinorm.$(OBJEXT)
 azzmos_OBJECTS = $(am_azzmos_OBJECTS)
 azzmos_LDADD = $(LDADD)
 DEFAULT_INCLUDES = -I. -I$(top_builddir)@am__isrc@
@@ -182,9 +182,16 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_LDFLAGS = @LIBCURL@ @POSTGRESQL_LDFLAGS@
-AM_CFLAGS = @POSTGRESQL_CFLAGS@
-azzmos_SOURCES = azzmos.c azzmos.h 
+AM_LDFLAGS = @LIBCURL@ \
+	       @POSTGRESQL_LDFLAGS@ \
+	       -L$(top_builddir)/lib -lazzmos
+
+AM_CFLAGS = @POSTGRESQL_CFLAGS@ \
+	    -I$(top_srcdir)/include
+
+azzmos_SOURCES = azzmos.c azzmos.h \
+		 urinorm.c urinorm.h
+
 all: all-am
 
 .SUFFIXES:
@@ -198,9 +205,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu  bin/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu  src/Makefile'; \
 	cd $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu  bin/Makefile
+	  $(AUTOMAKE) --gnu  src/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -257,6 +264,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/azzmos.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/urinorm.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -464,6 +472,9 @@ uninstall-am: uninstall-binPROGRAMS
 	pdf pdf-am ps ps-am tags uninstall uninstall-am \
 	uninstall-binPROGRAMS
 
+
+../lib/libazzmos.a:
+	cd ../lib $(MAKE) $(AM_MAKEFLAGS)
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

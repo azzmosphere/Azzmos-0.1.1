@@ -189,7 +189,7 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = bin test lib include 
+SUBDIRS = include lib src test
 EXTRA_DIST = autogen.sh TODO 
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
