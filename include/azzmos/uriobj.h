@@ -40,17 +40,18 @@
 
 /* #####   EXPORTED DATA TYPES   #################################################### */
 struct uriobj_s {
-	long   uri_id;        /* unique identifier for URI */
-	char **uri_scheme;    /* The scheme section */
-	char **uri_auth;      /* authority section */
-	char **uri_path;      /* path section  */
-	char **uri_query;     /* query section */
-	char **uri_frag;      /* fragment section */
-	char **uri_host;      /* hostname of URI */
-	char **uri_port;      /* uri port number */
-	char **uri_ip;        /* IP address */
-	time_t uri_mdate;     /* time that URI was last modified */
-	long   uri_flags;     /* various flags for the uri */
+	long   uri_id;              /* unique identifier for URI */
+	char **uri_scheme;          /* The scheme section */
+	char **uri_auth;            /* authority section */
+	char **uri_path;            /* path section  */
+	char **uri_query;           /* query section */
+	char **uri_frag;            /* fragment section */
+	char **uri_host;            /* hostname of URI */
+	char **uri_port;            /* uri port number */
+	char **uri_ip;              /* IP address */
+	time_t uri_mdate;           /* time that URI was last modified */
+	long   uri_flags;           /* various flags for the uri */
+	struct addrinfo **uri_addr; /* list of the URI resolved addresses */
 } typedef uriobj_t;
 
 /* #####   EXPORTED FUNCTION DECLARATIONS   ######################################### */

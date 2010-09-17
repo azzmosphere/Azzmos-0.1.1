@@ -93,6 +93,20 @@
 #include <ctype.h>
 #endif
 
+/*****************************************************************************************
+ * For Domain Name Resolution, netdb and socket must be included in the header, these 
+ * should be native functions to the kernel so there is no need to link against a library
+ *****************************************************************************************/
+#ifndef _SYS_SOCKET_H_
+#include <sys/socket.h>
+#endif
+#ifndef _NETDB_H_
+#include <netdb.h>
+#endif
+#ifndef _INET_H_
+#include <arpa/inet.h>
+#endif
+
 /* #####   EXPORTED MACROS   ######################################################## */
 
 /* #####   EXPORTED TYPE DEFINITIONS   ############################################## */

@@ -172,6 +172,7 @@ init_uriobj_str( uriobj_t *uri)
 	uri->uri_host   = (char **) malloc(sizeof(char *));
 	uri->uri_port   = (char **) malloc(sizeof(char *));
 	uri->uri_ip     = (char **) malloc(sizeof(char *));
+	uri->uri_addr   = (struct addrinfo **) malloc(sizeof(struct addrinfo *));
 }
 
 /* #####   FUNCTION DEFINITIONS  -  LOCAL TO THIS SOURCE FILE   ##################### */

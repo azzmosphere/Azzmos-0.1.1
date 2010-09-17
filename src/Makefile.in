@@ -48,7 +48,7 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am_azzmos_OBJECTS = azzmos.$(OBJEXT) urinorm.$(OBJEXT)
+am_azzmos_OBJECTS = uriresolve.$(OBJEXT) azzmos.$(OBJEXT)
 azzmos_OBJECTS = $(am_azzmos_OBJECTS)
 azzmos_LDADD = $(LDADD)
 DEFAULT_INCLUDES = -I. -I$(top_builddir)@am__isrc@
@@ -189,8 +189,8 @@ AM_LDFLAGS = @LIBCURL@ \
 AM_CFLAGS = @POSTGRESQL_CFLAGS@ \
 	    -I$(top_srcdir)/include
 
-azzmos_SOURCES = azzmos.c azzmos.h \
-		 urinorm.c urinorm.h
+azzmos_SOURCES = uriresolve.h uriresolve.c\
+		 azzmos.c azzmos.h
 
 all: all-am
 
@@ -264,7 +264,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/azzmos.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/urinorm.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/uriresolve.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

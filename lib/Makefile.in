@@ -54,7 +54,7 @@ am__installdirs = "$(DESTDIR)$(libdir)"
 libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libazzmos_la_LIBADD =
-am_libazzmos_la_OBJECTS = uriobj.lo utils.lo regexpr.lo
+am_libazzmos_la_OBJECTS = uriobj.lo utils.lo regexpr.lo urinorm.lo
 libazzmos_la_OBJECTS = $(am_libazzmos_la_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(top_builddir)@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -193,7 +193,8 @@ INCLUDES = -I$(top_srcdir)/include \
 lib_LTLIBRARIES = libazzmos.la
 libazzmos_la_SOURCES = uriobj.c \
 		       utils.c \
-		       regexpr.c
+		       regexpr.c \
+		       urinorm.c
 
 AM_LDFLAGS = @POSTGRESQL_LDFLAGS@ \
 	     @LIBCURL@
@@ -268,6 +269,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/regexpr.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/urinorm.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/uriobj.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/utils.Plo@am__quote@
 

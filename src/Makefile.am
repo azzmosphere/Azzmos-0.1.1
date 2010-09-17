@@ -9,5 +9,5 @@ AM_CFLAGS = @POSTGRESQL_CFLAGS@ \
 	cd ../lib $(MAKE) $(AM_MAKEFLAGS)
 
 bin_PROGRAMS = azzmos
-azzmos_SOURCES = azzmos.c azzmos.h \
-		 urinorm.c urinorm.h
+azzmos_SOURCES = uriresolve.h uriresolve.c\
+		 azzmos.c azzmos.h

@@ -3,4 +3,5 @@ include_HEADERS = azzmos-fe.h \
 		  azzmos/list.h \
 		  azzmos/uriobj.h \
 		  azzmos/utils.h \
-		  azzmos/regexpr.h
+		  azzmos/regexpr.h \
+		  azzmos/urinorm.h
